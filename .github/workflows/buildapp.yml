@@ -1,33 +1,91 @@
-- name: Download Theos Jailed
+# Original idea by @ISnackable. Many thanks to him for handling the most hardest parts!
+# https://github.com/ISnackable/CercubePlus/blob/main/.github/workflows/Build.yml
+
+name: Build and Release YTLitePlus
+
+on:
+  workflow_dispatch:
+    inputs:
+      sdk_version:
+        description: "iOS SDK Version"
+        default: "17.5"
+        required: true
+        type: string
+      decrypted_youtube_url:
+        description: "Direct URL of the decrypted YouTube ipa"
+        default: ""
+        required: true
+        type: string
+      bundle_id:
+        description: "Modify the bundle ID"
+        default: "com.google.ios.youtube"
+        required: true
+        type: string
+      app_name:
+        description: "Modify the app name"
+        default: "YouTube"
+        required: true
+        type: string
+      commit_id:
+        description: "(Optional) Commit ID to build at"
+        default: ""
+        required: false
+        type: string
+      upload_artifact:
+        description: "Upload iPA as artifact (Public)"
+        default: false
+        required: false
+        type: boolean
+      catbox_upload:
+        description: "Upload iPA to Catbox.moe (URL)"
+        default: true
+        required: false
+        type: boolean
+      create_release:
+        description: "Create a draft release (Private)"
+        default: false
+        required: false
+        type: boolean
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build YTLitePlus
+    runs-on: macos-15-intel
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Main
         uses: actions/checkout@v4
         with:
-          repository: qnblackcat/theos-jailed
-          ref: master
-          path: theos-jailed
+          path: main
+          ref: ${{ github.event.inputs.commit_id || github.ref }}
           submodules: recursive
 
-      - name: Install Theos Jailed
-        run: |
-          ./theos-jailed/install
+      - name: Install Dependencies
+        run: brew install ldid dpkg make
+
+      - name: Download Theos
+        uses: actions/checkout@v4
+        with:
+          repository: theos/theos
+          ref: master
+          path: theos
+          submodules: recursive
+
+      - name: iOS SDK Caching
+        id: SDK
+        uses: actions/cache@v4
         env:
-          THEOS: ${{ github.workspace }}/theos
-      
-      - name: Replace YTUHD with sideload-compatible version
-        run: |
-          cd ${{ github.workspace }}/main
-          # Remove the old YTUHD
-          rm -rf Tweaks/YTUHD
-          # Clone the sideload-compatible version
-          git clone https://github.com/Tonwalter888/YTUHD.git Tweaks/YTUHD
-        env:
-          THEOS: ${{ github.workspace }}/theos
-        
-      - name: Fix Compiling
-        run: |
-          # Update GNU Make to allow for faster building
-          echo "$(brew --prefix make)/libexec/gnubin" >> $GITHUB_PATH
-          (echo export PATH="/usr/local/opt/make/libexec/gnubin:$PATH" >> ~/.bash_profile)
-          source ~/.bash_profile          restore-keys: ${{ env.cache-name }}
+          cache-name: iOS-${{ inputs.sdk_version }}-SDK
+        with:
+          path: theos/sdks/
+          key: ${{ env.cache-name }}
+          restore-keys: ${{ env.cache-name }}
 
       - name: Download iOS SDK
         if: steps.SDK.outputs.cache-hit != 'true'
@@ -52,6 +110,16 @@
       - name: Install Theos Jailed
         run: |
           ./theos-jailed/install
+        env:
+          THEOS: ${{ github.workspace }}/theos
+      
+      - name: Replace YTUHD with sideload-compatible version
+        run: |
+          cd ${{ github.workspace }}/main
+          # Remove the old YTUHD
+          rm -rf Tweaks/YTUHD
+          # Clone the sideload-compatible version
+          git clone https://github.com/Tonwalter888/YTUHD.git Tweaks/YTUHD
         env:
           THEOS: ${{ github.workspace }}/theos
         

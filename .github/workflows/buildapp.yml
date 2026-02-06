@@ -138,8 +138,10 @@ jobs:
 
       - name: Prepare YouTube iPA
         run: |
-          # Download and unzip iPA
+          # Download and unzip iPA using curl with proper quoting
+          echo "Downloading YouTube IPA..."
           curl -L "${YOUTUBE_URL}" -o main/YouTube.ipa
+          
           # Check if file was downloaded and has content
           if [ ! -f main/YouTube.ipa ]; then
             echo "Error: YouTube.ipa not found after download"
@@ -170,11 +172,21 @@ jobs:
             exit 1
           fi
           
+          echo "Unzipping IPA..."
           unzip -q main/YouTube.ipa -d main/tmp
+          
+          # Verify the unzip was successful
+          if [ ! -f main/tmp/Payload/YouTube.app/Info.plist ]; then
+            echo "Error: Info.plist not found after unzipping"
+            echo "Contents of main/tmp:"
+            ls -la main/tmp/
+            exit 1
+          fi
+          
           # Get the version number of the YouTube app and store it
           echo "YT_VERSION=$(grep -A 1 '<key>CFBundleVersion</key>' main/tmp/Payload/YouTube.app/Info.plist | grep '<string>' | awk -F'[><]' '{print $3}')" >> $GITHUB_ENV
           # Get the version number of the latest release
-          wget -qO- https://github.com/dayanch96/YTLite/releases/latest > main/tmp/release_page.html
+          curl -sL https://github.com/dayanch96/YTLite/releases/latest > main/tmp/release_page.html
           YTLITE_VERSION=$(grep -o -E '/tag/v[^"]+' main/tmp/release_page.html | head -n 1 | sed 's/\/tag\/v//')
           echo "YTLITE_VERSION=5.0.1" >> $GITHUB_ENV
           echo $YTLITE_VERSION

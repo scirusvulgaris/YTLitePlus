@@ -140,6 +140,19 @@ jobs:
         run: |
           # Download and unzip iPA
           curl -sL "$YOUTUBE_URL" -o main/YouTube.ipa
+          # Check if file was downloaded and has content
+          if [ ! -f main/YouTube.ipa ]; then
+            echo "Error: YouTube.ipa not found after download"
+            exit 1
+          fi
+          
+          FILE_SIZE=$(stat -f%z main/YouTube.ipa 2>/dev/null || stat -c%s main/YouTube.ipa 2>/dev/null)
+          echo "Downloaded file size: $FILE_SIZE bytes"
+          
+          if [ "$FILE_SIZE" -lt 1000000 ]; then
+            echo "Error: Downloaded file is too small (likely an error page)"
+            exit 1
+          fi
           unzip -q main/YouTube.ipa -d main/tmp
           # Get the version number of the YouTube app and store it
           echo "YT_VERSION=$(grep -A 1 '<key>CFBundleVersion</key>' main/tmp/Payload/YouTube.app/Info.plist | grep '<string>' | awk -F'[><]' '{print $3}')" >> $GITHUB_ENV

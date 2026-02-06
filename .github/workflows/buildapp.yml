@@ -139,7 +139,7 @@ jobs:
       - name: Prepare YouTube iPA
         run: |
           # Download and unzip iPA
-          curl -sL "$YOUTUBE_URL" -o main/YouTube.ipa
+          curl -L "${YOUTUBE_URL}" -o main/YouTube.ipa
           # Check if file was downloaded and has content
           if [ ! -f main/YouTube.ipa ]; then
             echo "Error: YouTube.ipa not found after download"

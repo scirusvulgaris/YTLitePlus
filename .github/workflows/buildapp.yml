@@ -151,8 +151,25 @@ jobs:
           
           if [ "$FILE_SIZE" -lt 1000000 ]; then
             echo "Error: Downloaded file is too small (likely an error page)"
+            cat main/YouTube.ipa
             exit 1
           fi
+          
+          # Check file type
+          echo "File type:"
+          file main/YouTube.ipa
+          
+          # Show first few bytes to debug
+          echo "First 100 bytes of file:"
+          head -c 100 main/YouTube.ipa | od -A x -t x1z -v
+          
+          # Verify it's a valid zip file
+          if ! unzip -t main/YouTube.ipa > /dev/null 2>&1; then
+            echo "Error: Downloaded file is not a valid IPA/ZIP file"
+            echo "This might be an HTML error page or corrupted download"
+            exit 1
+          fi
+          
           unzip -q main/YouTube.ipa -d main/tmp
           # Get the version number of the YouTube app and store it
           echo "YT_VERSION=$(grep -A 1 '<key>CFBundleVersion</key>' main/tmp/Payload/YouTube.app/Info.plist | grep '<string>' | awk -F'[><]' '{print $3}')" >> $GITHUB_ENV
